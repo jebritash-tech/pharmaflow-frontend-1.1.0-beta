@@ -1,222 +1,165 @@
-// =====================================
-// Environment Detection
-// =====================================
+const CACHE_NAME =
+    'pharmaflow-v1.1.0';
 
-const IS_DEV =
-
-    self.location.hostname === '127.0.0.1' ||
-
-    self.location.hostname === 'localhost';
-
-
-// =====================================
-// Cache Settings
-// =====================================
-
-const CACHE_NAME = 'pharmacy-v1';
+const BASE =
+    '/pharmaflow-frontend-1.1.0-beta';
 
 const STATIC_FILES = [
 
-    '/',
+    `${BASE}/`,
+    `${BASE}/login.html`,
+    `${BASE}/admin.html`,
+    `${BASE}/analytics.html`,
+    `${BASE}/install.html`,
+    `${BASE}/forgot-password.html`,
+    `${BASE}/reset-password.html`,
 
-    '/login.html',
-    '/admin.html',
-    '/pos.html',
-    '/analytics.html',
+    `${BASE}/manifest.json`,
 
-    '/manifest.json',
+    `${BASE}/js/pwa.js`,
+    `${BASE}/js/api.js`,
+    `${BASE}/js/auth.js`,
 
-    '/js/pwa.js',
-    '/js/api.js',
-    '/js/auth.js',
-    '/js/offline-db.js',
+    `${BASE}/assets/icons/icon-192.png`,
+    `${BASE}/assets/icons/icon-512.png`
 
 ];
 
+self.addEventListener(
+    'install',
+    event => {
 
-// =====================================
-// Development Mode
-// =====================================
+        event.waitUntil(
 
-if (IS_DEV) {
+            caches.open(
+                CACHE_NAME
+            ).then(cache => {
 
-    console.log(
-        '[SW] Development Mode'
-    );
+                return cache.addAll(
+                    STATIC_FILES
+                );
 
-    self.addEventListener(
-        'install',
-        () => self.skipWaiting()
-    );
+            })
 
-    self.addEventListener(
-        'activate',
-        event => {
+        );
 
-            event.waitUntil(
+        self.skipWaiting();
 
-                self.clients.claim()
+    }
+);
 
-            );
+self.addEventListener(
+    'activate',
+    event => {
 
-        }
-    );
+        event.waitUntil(
 
-    self.addEventListener(
-        'fetch',
-        event => {
+            caches.keys()
+                .then(keys => {
 
-            event.respondWith(
+                    return Promise.all(
 
-                fetch(event.request)
+                        keys.map(key => {
 
-            );
+                            if (
+                                key !== CACHE_NAME
+                            ) {
 
-        }
-    );
+                                return caches.delete(
+                                    key
+                                );
 
-}
+                            }
 
-// =====================================
-// Production Mode
-// =====================================
+                        })
 
-else {
+                    );
 
-    console.log(
-        '[SW] Production Mode'
-    );
+                })
 
-    // Install
+        );
 
-    self.addEventListener(
+        self.clients.claim();
 
-        'install',
+    }
+);
 
-        event => {
+self.addEventListener(
+    'fetch',
+    event => {
 
-            self.skipWaiting();
-
-            event.waitUntil(
-
-                caches.open(
-                    CACHE_NAME
-                )
-                .then(cache =>
-
-                    cache.addAll(
-                        STATIC_FILES
-                    )
-
-                )
-
-            );
-
+        if (
+            event.request.method !==
+            'GET'
+        ) {
+            return;
         }
 
-    );
-
-    // Activate
-
-    self.addEventListener(
-
-        'activate',
-
-        event => {
-
-            event.waitUntil(
-
-                Promise.all([
-
-                    self.clients.claim(),
-
-                    caches.keys()
-                        .then(keys =>
-
-                            Promise.all(
-
-                                keys
-                                    .filter(
-
-                                        key =>
-                                        key !== CACHE_NAME
-
-                                    )
-                                    .map(
-
-                                        key =>
-                                        caches.delete(
-                                            key
-                                        )
-
-                                    )
-
-                            )
-
-                        )
-
-                ])
-
+        const url =
+            new URL(
+                event.request.url
             );
 
+        if (
+            url.protocol ===
+            'chrome-extension:'
+        ) {
+            return;
         }
 
-    );
+        event.respondWith(
 
-    // Fetch
+            caches.match(
+                event.request
+            ).then(cached => {
 
-    self.addEventListener(
+                if (cached) {
+                    return cached;
+                }
 
-        'fetch',
-
-        event => {
-
-            if (
-                event.request.method !==
-                'GET'
-            ) {
-                return;
-            }
-
-            event.respondWith(
-
-                fetch(
+                return fetch(
                     event.request
                 )
+                    .then(response => {
 
-                .then(response => {
+                        if (
+                            !response ||
+                            response.status !== 200
+                        ) {
 
-                    const copy =
-                        response.clone();
+                            return response;
 
-                    caches.open(
-                        CACHE_NAME
-                    )
-                    .then(cache => {
+                        }
 
-                        cache.put(
-                            event.request,
-                            copy
+                        const clone =
+                            response.clone();
+
+                        caches.open(
+                            CACHE_NAME
+                        )
+                            .then(cache => {
+
+                                cache.put(
+                                    event.request,
+                                    clone
+                                );
+
+                            });
+
+                        return response;
+
+                    })
+                    .catch(() => {
+
+                        return caches.match(
+                            `${BASE}/login.html`
                         );
 
                     });
 
-                    return response;
+            })
 
-                })
+        );
 
-                .catch(() =>
-
-                    caches.match(
-                        event.request
-                    )
-
-                )
-
-            );
-
-        }
-
-    );
-
-}
+    }
+);
