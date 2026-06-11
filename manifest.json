@@ -1,24 +1,27 @@
 {
-    "name": "نظام إدارة الصيدلية",
-    "short_name": "الصيدلية",
-    "description": "نظام إدارة صيدلية متكامل",
-    "start_url": "/install.html",
-    "scope": "/",
+    "name": "PharmaFlow",
+    "short_name": "PharmaFlow",
+    "description": "نظام إدارة الصيدليات",
+    "start_url": "/pharmaflow-frontend-1.1.0-beta/login.html",
+    "scope": "/pharmaflow-frontend-1.1.0-beta/",
     "display": "standalone",
-    "orientation": "landscape",
     "background_color": "#ffffff",
-    "theme_color": "#2563eb",
-  
+    "theme_color": "#10b981",
+    "orientation": "portrait",
+    "lang": "ar",
+    "dir": "rtl",
     "icons": [
-      {
-        "src": "/assets/icons/icon-192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "/assets/icons/icon-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
+        {
+            "src": "assets/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "assets/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
     ]
-  }
+}
