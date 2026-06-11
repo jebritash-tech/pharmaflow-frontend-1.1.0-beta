@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مركز ذكاء الصيدلية - PharmaFlow</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="manifest" href="/manifest.json">
+
+    <meta
+        name="theme-color"
+        content="#2563eb">
+
+    <script src="js/pwa.js"></script>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+        }
+
+        .card {
+            @apply bg-white rounded-xl shadow p-4;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100">
+
+<div id="app">
+
+    <div class="max-w-7xl mx-auto p-6">
+
+        <!-- Header -->
+
+        <div class="flex justify-between items-center mb-8">
+
+            <div>
+                <h1 class="text-3xl font-bold">
+                    مركز ذكاء الصيدلية
+                </h1>
+
+                <p class="text-gray-500 mt-2">
+                    لوحة تحليلات وإدارة القرار
+                </p>
+            </div>
+
+            <button
+                @click="loadDashboard"
+                class="bg-blue-600 text-white px-4 py-2 ml-2 mr-2 rounded-lg">
+                تحديث
+            </button>
+            <a href="/admin.html" class="bg-blue-600 text-white px-4 py-2 ml-2 mr-2 rounded-lg">رجوع</a>
+
+        </div>
+
+        <!-- Loading -->
+
+        <div
+            v-if="loading"
+            class="bg-white p-10 rounded-xl shadow text-center">
+
+            جاري تحميل البيانات...
+
+        </div>
+
+        <template v-if="dashboard">
+
+            <!-- Daily Action Center -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    مركز القرارات اليومية
+                </h2>
+
+                <div class="grid lg:grid-cols-4 gap-4">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-2">
+                            أصناف منخفضة المخزون
+                        </h3>
+
+                        <div class="text-3xl font-bold text-red-600">
+
+                            {{ dashboard.inventory.low_stock }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-2">
+                            قرب انتهاء الصلاحية
+                        </h3>
+
+                        <div class="text-3xl font-bold text-orange-600">
+
+                            {{ dashboard.inventory.expiring_soon }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-2">
+                            Inventory Health
+                        </h3>
+
+                        <div class="text-3xl font-bold text-green-600">
+
+                            {{ dashboard.inventory.health_score }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-red-50 border border-red-300 rounded-xl p-4">
+
+                        <h3 class="font-bold text-red-700">
+                            رأس المال المجمد
+                        </h3>
+
+                        <div class="text-3xl font-bold mt-3">
+
+                            {{ formatNumber(
+                                dashboard.kpis.frozen_capital
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- KPIs -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    المؤشرات الرئيسية
+                </h2>
+
+                <div class="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            مبيعات اليوم
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2">
+
+                            {{ formatNumber(
+                                dashboard.kpis.today_sales
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            ربح اليوم
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2">
+
+                            {{ formatNumber(
+                                dashboard.kpis.today_profit
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            الفواتير
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2">
+
+                            {{ dashboard.kpis.today_invoices }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            متوسط الفاتورة
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2">
+
+                            {{ formatNumber(
+                                dashboard.kpis.avg_invoice
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            قيمة المخزون
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2">
+
+                            {{ formatNumber(
+                                dashboard.kpis.inventory_value
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="text-gray-500">
+                            رأس المال المجمد
+                        </div>
+
+                        <div class="text-2xl font-bold mt-2 text-red-600">
+
+                            {{ formatNumber(
+                                dashboard.kpis.frozen_capital
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+            <!-- Sales & Profit -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    المبيعات والأرباح
+                </h2>
+
+                <div class="grid lg:grid-cols-2 gap-6">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <div class="flex justify-between mb-4">
+
+                            <h3 class="font-bold">
+                                المبيعات مقابل الربح
+                            </h3>
+
+                        </div>
+
+                        <canvas
+                            id="salesProfitChart"
+                            height="120">
+                        </canvas>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-4">
+                            النمو الشهري
+                        </h3>
+
+                        <canvas
+                            id="growthChart"
+                            height="120">
+                        </canvas>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Inventory Intelligence -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    مركز ذكاء المخزون
+                </h2>
+
+                <div class="grid lg:grid-cols-3 gap-6">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-3">
+                            توزيع المخزون
+                        </h3>
+
+                        <canvas
+                            id="inventoryDistributionChart">
+                        </canvas>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-3">
+                            تحليل الموردين
+                        </h3>
+
+                        <canvas
+                            id="supplierChart">
+                        </canvas>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h3 class="font-bold mb-3">
+                            ساعات الذروة
+                        </h3>
+
+                        <canvas
+                            id="peakHoursChart">
+                        </canvas>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Forecast -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    التوقعات
+                </h2>
+
+                <div class="bg-white rounded-xl shadow p-4">
+
+                    <canvas
+                        id="forecastChart"
+                        height="120">
+                    </canvas>
+
+                </div>
+
+            </section>
+
+            <!-- ABC Analysis -->
+
+            <section class="mb-8">
+
+                <h2 class="text-xl font-bold mb-4">
+                    تحليل ABC
+                </h2>
+
+                <div class="grid lg:grid-cols-2 gap-6">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <canvas
+                            id="abcChart">
+                        </canvas>
+
+                    </div>
+
+                    <div
+                        class="bg-white rounded-xl shadow p-6 flex flex-col justify-center">
+
+                        <div class="mb-4">
+
+                            <span class="font-bold text-green-700">
+                                A
+                            </span>
+
+                            تمثل الأصناف الأعلى تأثيراً على الإيرادات.
+
+                        </div>
+
+                        <div class="mb-4">
+
+                            <span class="font-bold text-yellow-600">
+                                B
+                            </span>
+
+                            أصناف متوسطة التأثير.
+
+                        </div>
+
+                        <div>
+
+                            <span class="font-bold text-red-600">
+                                C
+                            </span>
+
+                            أصناف ضعيفة التأثير.
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+            <!-- Top Selling & Profit -->
+
+            <section class="mb-8">
+
+                <div class="grid lg:grid-cols-2 gap-6">
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h2 class="font-bold text-lg mb-4">
+                            الأدوية الأكثر مبيعاً
+                        </h2>
+
+                        <table class="w-full">
+
+                            <thead>
+
+                                <tr class="border-b">
+
+                                    <th class="text-right py-2">
+                                        الدواء
+                                    </th>
+
+                                    <th class="text-right py-2">
+                                        الكمية
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr
+                                    v-for="item in dashboard.top_selling"
+                                    :key="item.name"
+                                    class="border-b">
+
+                                    <td class="py-2">
+                                        {{ item.name }}
+                                    </td>
+
+                                    <td class="py-2">
+                                        {{ item.qty }}
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow p-4">
+
+                        <h2 class="font-bold text-lg mb-4">
+                            الأعلى ربحية
+                        </h2>
+
+                        <table class="w-full">
+
+                            <thead>
+
+                                <tr class="border-b">
+
+                                    <th class="text-right py-2">
+                                        الدواء
+                                    </th>
+
+                                    <th class="text-right py-2">
+                                        الربح
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr
+                                    v-for="item in dashboard.top_profit_products"
+                                    :key="item.name"
+                                    class="border-b">
+
+                                    <td class="py-2">
+                                        {{ item.name }}
+                                    </td>
+
+                                    <td class="py-2">
+                                        {{ formatNumber(item.profit) }}
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Purchase Plan -->
+
+            <section class="mb-8">
+
+                <div class="bg-white rounded-xl shadow p-4">
+
+                    <h2 class="font-bold text-lg mb-4">
+                        خطة الشراء المقترحة
+                    </h2>
+
+                    <table class="w-full">
+
+                        <thead>
+
+                            <tr class="border-b">
+
+                                <th class="text-right py-2">
+                                    الصنف
+                                </th>
+
+                                <th class="text-right py-2">
+                                    متوسط المبيعات
+                                </th>
+
+                                <th class="text-right py-2">
+                                    المخزون الحالي
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            <tr
+                                v-for="item in dashboard.forecast"
+                                :key="item.name"
+                                class="border-b">
+
+                                <td class="py-2">
+                                    {{ item.name }}
+                                </td>
+
+                                <td class="py-2">
+                                    {{ item.avg_daily_sales }}
+                                </td>
+
+                                <td class="py-2">
+                                    {{ item.current_stock }}
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+            <!-- Recent Sales -->
+
+            <section class="mb-8">
+
+                <div class="bg-white rounded-xl shadow p-4">
+
+                    <h2 class="font-bold text-lg mb-4">
+                        آخر الفواتير
+                    </h2>
+
+                    <table class="w-full">
+
+                        <thead>
+
+                            <tr class="border-b">
+
+                                <th class="text-right py-2">
+                                    #
+                                </th>
+
+                                <th class="text-right py-2">
+                                    الإجمالي
+                                </th>
+
+                                <th class="text-right py-2">
+                                    الربح
+                                </th>
+
+                                <th class="text-right py-2">
+                                    التاريخ
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            <tr
+                                v-for="sale in dashboard.recent_sales"
+                                :key="sale.id"
+                                class="border-b">
+
+                                <td class="py-2">
+                                    {{ sale.id }}
+                                </td>
+
+                                <td class="py-2">
+                                    {{ formatNumber(sale.total_amount) }}
+                                </td>
+
+                                <td class="py-2">
+                                    {{ formatNumber(sale.profit_amount) }}
+                                </td>
+
+                                <td class="py-2">
+                                    {{ sale.created_at }}
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+            </template>
+
+            </div>
+            <script>
+               
+                const API_URL =
+                    'api';
+
+                const api = axios.create({
+
+                    baseURL: API_URL,
+
+                    headers: {
+
+                        Accept:
+                            'application/json'
+
+                    }
+
+                });
+
+                api.interceptors.request.use(config => {
+
+                    const token =
+                        localStorage.getItem('token');
+
+                    if(token){
+
+                        config.headers.Authorization =
+                            `Bearer ${token}`;
+
+                    }
+
+                    return config;
+
+                });
+                
+                const { createApp } = Vue;
+                
+                createApp({
+                
+                    data() {
+                
+                        return {
+                
+                            loading:false,
+                
+                            dashboard:null,
+                
+                            charts:{}
+                
+                        }
+                
+                    },
+                
+                    async mounted() {
+                
+                        await this.loadDashboard();
+                
+                    },
+                
+                    methods: {
+                
+                        formatNumber(value) {
+                
+                            if (!value)
+                                return 0;
+                
+                            return Number(value)
+                                .toLocaleString();
+                
+                        },
+                
+                        async loadDashboard() {
+                
+                            this.loading = true;
+                
+                            try {
+                
+                                const token =
+                                localStorage.getItem('token');
+
+                                const response =
+                                    await axios.get(
+                                        API_URL + '/analytics/dashboard',
+                                        {
+                                            headers: {
+                                                Authorization:
+                                                    `Bearer ${token}`,
+                                                Accept:
+                                                    'application/json'
+                                            }
+                                        }
+                                    );
+                
+                                this.dashboard =
+                                    response.data;
+                
+                                this.$nextTick(() => {
+                
+                                    this.renderCharts();
+                
+                                });
+                
+                            }
+                            catch(error) {
+                
+                                console.error(error);
+                
+                                alert(
+                                    'تعذر تحميل بيانات التحليلات'
+                                );
+                
+                            }
+                            finally {
+                
+                                this.loading = false;
+                
+                            }
+                
+                        },
+                        destroyChart(name) {
+
+                        if(this.charts[name]) {
+
+                            this.charts[name].destroy();
+
+                        }
+
+                        },
+
+                        renderCharts() {
+
+                        this.renderSalesProfitChart();
+                        this.renderInventoryDistributionChart();
+                        this.renderGrowthChart();
+                        this.renderSupplierChart();
+                        this.renderPeakHoursChart();
+                        this.renderForecastChart();
+                        this.renderABCChart();
+
+                        },
+                        renderSalesProfitChart() {
+
+                        this.destroyChart('sales');
+
+                        this.charts.sales =
+                            new Chart(
+                                document.getElementById(
+                                    'salesProfitChart'
+                                ),
+                                {
+                                    type:'line',
+
+                                    data:{
+
+                                        labels:
+                                            this.dashboard
+                                                .sales_profit_chart
+                                                .map(x=>x.month),
+
+                                        datasets:[
+
+                                            {
+                                                label:'المبيعات',
+
+                                                data:
+                                                    this.dashboard
+                                                        .sales_profit_chart
+                                                        .map(x=>x.sales)
+                                            },
+
+                                            {
+                                                label:'الأرباح',
+
+                                                data:
+                                                    this.dashboard
+                                                        .sales_profit_chart
+                                                        .map(x=>x.profit)
+                                            }
+
+                                        ]
+
+                                    }
+
+                                }
+                            );
+
+                        },
+
+                        renderInventoryDistributionChart() {
+
+                        this.destroyChart('inventory');
+
+                        this.charts.inventory =
+                            new Chart(
+                                document.getElementById(
+                                    'inventoryDistributionChart'
+                                ),
+                                {
+                                    type: 'doughnut',
+
+                                    data: {
+
+                                        labels: [
+
+                                            'منخفض',
+
+                                            'قرب الانتهاء',
+
+                                            'سليم'
+
+                                        ],
+
+                                        datasets: [{
+
+                                            data: [
+
+                                                this.dashboard.inventory.low_stock,
+
+                                                this.dashboard.inventory.expiring_soon,
+
+                                                this.dashboard.inventory.health_score
+
+                                            ]
+
+                                        }]
+
+                                    }
+
+                                }
+                            );
+
+                    },
+                        renderGrowthChart() {
+
+                        this.destroyChart('growth');
+
+                        this.charts.growth =
+                            new Chart(
+                                document.getElementById(
+                                    'growthChart'
+                                ),
+                                {
+                                    type:'bar',
+
+                                    data:{
+
+                                        labels:
+                                            this.dashboard
+                                                .growth_chart
+                                                .map(x=>x.month),
+
+                                        datasets:[{
+
+                                            label:'النمو %',
+
+                                            data:
+                                                this.dashboard
+                                                    .growth_chart
+                                                    .map(x=>x.growth)
+
+                                        }]
+
+                                    }
+
+                                }
+                            );
+
+                        },
+
+                        renderSupplierChart() {
+
+                        this.destroyChart('supplier');
+
+                        this.charts.supplier =
+                            new Chart(
+                                document.getElementById(
+                                    'supplierChart'
+                                ),
+                                {
+                                    type:'doughnut',
+
+                                    data:{
+
+                                        labels:
+                                            this.dashboard
+                                                .suppliers
+                                                .map(x=>x.name),
+
+                                        datasets:[{
+
+                                            data:
+                                                this.dashboard
+                                                    .suppliers
+                                                    .map(x=>x.total)
+
+                                        }]
+
+                                    }
+
+                                }
+                            );
+
+                        },
+                        renderPeakHoursChart() {
+
+                        this.destroyChart('peak');
+
+                        this.charts.peak =
+                            new Chart(
+                                document.getElementById(
+                                    'peakHoursChart'
+                                ),
+                                {
+                                    type:'bar',
+
+                                    data:{
+
+                                        labels:
+                                            this.dashboard
+                                                .peak_hours
+                                                .map(x=>x.hour),
+
+                                        datasets:[{
+
+                                            label:'الفواتير',
+
+                                            data:
+                                                this.dashboard
+                                                    .peak_hours
+                                                    .map(x=>x.invoices)
+
+                                        }]
+
+                                    }
+
+                                }
+                            );
+
+                        },
+                        renderForecastChart() {
+
+                            this.destroyChart('forecast');
+
+                            const topForecast =
+
+                                this.dashboard.forecast
+                                    .slice(0, 10);
+
+                            this.charts.forecast =
+                                new Chart(
+                                    document.getElementById(
+                                        'forecastChart'
+                                    ),
+                                    {
+                                        type: 'bar',
+
+                                        data: {
+
+                                            labels:
+                                                topForecast.map(
+                                                    x => x.name
+                                                ),
+
+                                            datasets: [
+
+                                                {
+
+                                                    label:
+                                                        'المخزون الحالي',
+
+                                                    data:
+                                                        topForecast.map(
+                                                            x =>
+                                                            Number(
+                                                                x.current_stock
+                                                            )
+                                                        )
+
+                                                }
+
+                                            ]
+
+                                        }
+
+                                    }
+                                );
+
+                            },
+
+                            renderABCChart() {
+
+                                this.destroyChart('abc');
+
+                                this.charts.abc =
+                                    new Chart(
+                                        document.getElementById(
+                                            'abcChart'
+                                        ),
+                                        {
+                                            type:'pie',
+
+                                            data:{
+
+                                                labels:[
+                                                    'A',
+                                                    'B',
+                                                    'C'
+                                                ],
+
+                                                datasets:[{
+
+                                                    data:[
+                                                        70,
+                                                        20,
+                                                        10
+                                                    ]
+
+                                                }]
+
+                                            }
+
+                                        }
+                                    );
+
+                            }
+
+                            }
+
+                            }).mount('#app');
+
+                            </script>
+
+                            </body>
+                            </html>

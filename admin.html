@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة التحكم الإدارية - PharmaFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <meta
+        name="theme-color"
+        content="#2563eb">
+
+    <script src="js/pwa.js"></script>
+</head>
+<body class="bg-slate-50">
+
+<div id="app" class="flex h-screen">
+    <div
+        v-if="showOfflineOverlay"
+        class="fixed inset-0 z-[999999] bg-black/70 backdrop-blur-sm flex items-center justify-center">
+
+        <div
+            class="bg-white rounded-2xl shadow-2xl p-10 max-w-lg text-center">
+
+            <div class="mb-6">
+
+                <i
+                    class="fas fa-wifi text-red-600 text-7xl">
+                </i>
+
+            </div>
+
+            <h1
+                class="text-3xl font-bold text-red-600 mb-4">
+
+                لا يوجد اتصال بالإنترنت
+
+            </h1>
+
+            <p
+                class="text-slate-600 text-lg mb-6">
+
+                تعذر الاتصال بالشبكة.
+
+                يرجى التحقق من الاتصال ثم إعادة المحاولة.
+
+            </p>
+
+            <div
+                class="inline-flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-lg">
+
+                <span
+                    class="animate-pulse">
+
+                    ●
+
+                </span>
+
+                انتظار عودة الاتصال...
+
+            </div>
+
+        </div>
+
+    </div>
+    <aside class="w-64 bg-slate-900 text-white flex flex-col">
+        <div class="p-6 text-center border-b border-slate-700">
+            <h2 class="text-xl font-bold text-emerald-400">إدارة الصيدلية</h2>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button 
+                    v-for="tab in tabs"
+                    :key="tab.id"
+                    @click="navigate(tab)"
+                    :class="['w-full text-right p-3 rounded-lg transition', activeTab === tab.id ? 'bg-emerald-600' : 'hover:bg-slate-800']">
+                <i :class="tab.icon" class="ml-3"></i> {{ tab.name }}
+            </button>
+        </nav>
+        
+        <button
+            @click="logout"
+            class="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 w-full">
+
+            <i class="fas fa-sign-out-alt ml-2"></i>
+
+            تسجيل الخروج
+
+        </button>
+        <div class="p-4 border-t border-slate-700 text-sm text-slate-400">
+            <div class="p-4 border-t border-slate-700 text-sm text-slate-400">
+                <i class="fas fa-user-shield ml-2"></i>
+                {{ adminUser?.name || 'جاري التحميل.' }}
+            </div>
+        </div>
+        
+        <p class="text-[10px] font-bold">
+            إدارة الصيدلية | الإصدار 1.1.0 Beta
+        </p>
+    </aside>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-800">{{ currentTabName }}</h1>
+        </header>
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border min-h-[400px]">
+            <component :is="currentComponent"></component>
+        </div>
+    </main>
+    <!-- Global Loading Overlay -->
+    <div id="global-loader" class="hidden fixed inset-0 z-[9999] bg-white/70 flex items-center justify-center backdrop-blur-sm">
+        <div class="flex flex-col items-center">
+            <i class="fas fa-spinner fa-spin text-5xl text-emerald-600"></i>
+            <p class="mt-4 font-bold text-slate-700">جاري المعالجة...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+   const token = localStorage.getItem('token');
+    if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+    // إضافة Interceptors لـ Axios
+    axios.interceptors.request.use((config) => {
+        // إظهار اللودر عند بداية الطلب
+        document.getElementById('global-loader').classList.remove('hidden');
+        return config;
+    }, (error) => {
+        document.getElementById('global-loader').classList.add('hidden');
+        return Promise.reject(error);
+    });
+
+    axios.interceptors.response.use((response) => {
+        // إخفاء اللودر عند نجاح الطلب
+        document.getElementById('global-loader').classList.add('hidden');
+        return response;
+    }, (error) => {
+        // إخفاء اللودر عند حدوث خطأ
+        document.getElementById('global-loader').classList.add('hidden');
+        return Promise.reject(error);
+    });
+    const { createApp, ref, computed,onMounted } = Vue;
+
+    
+const Overview = {
+    template: `
+        <div class="p-6 max-w-7xl mx-auto space-y-8">
+            <div class="bg-white p-4 rounded-lg shadow">
+                <label class="block text-sm font-medium text-gray-700 mb-2">تصفية لوحة التحكم حسب الفرع</label>
+                <select v-model="selectedBranch" @change="fetchOverview" 
+                    class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">عرض إحصائيات جميع الفروع</option>
+                    <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-blue-600 text-white p-4 rounded-lg shadow"><p class="text-xs opacity-80">مبيعات اليوم</p><h3 class="text-xl font-bold">{{ stats.daily_sales || 0 }} ج.س</h3></div>
+                <div class="bg-emerald-600 text-white p-4 rounded-lg shadow"><p class="text-xs opacity-80">عدد الفواتير</p><h3 class="text-xl font-bold">{{ stats.invoice_count || 0 }}</h3></div>
+                <div class="bg-red-500 text-white p-4 rounded-lg shadow"><p class="text-xs opacity-80">أصناف ناقصة</p><h3 class="text-xl font-bold">{{ stats.low_stock_items?.length || 0 }}</h3></div>
+                <div class="bg-purple-600 text-white p-4 rounded-lg shadow"><p class="text-xs opacity-80">تنبيهات الانتهاء</p><h3 class="text-xl font-bold">{{ stats.all_batches?.filter(b => isExpiring(b.expiry_date)).length || 0 }}</h3></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded shadow border">
+                    <h3 class="font-bold mb-3 text-sm text-slate-700">سجل المبيعات</h3>
+                    <table class="w-full text-right text-xs">
+                        <tr class="bg-slate-50"><th>الفاتورة</th><th>التاريخ</th><th>الإجمالي</th></tr>
+                        <tr v-for="s in paginate(stats.sales_history, pageSales)" :key="s.id" class="border-t">
+                            <td class="p-2">#{{ s.id }}</td><td class="p-2">{{ s.created_at?.substring(0, 10) }}</td><td class="p-2 font-bold">{{ s.total_amount }} ج.س</td>
+                        </tr>
+                    </table>
+                    <div class="mt-2 flex gap-1"><button @click="pageSales--" :disabled="pageSales===1" class="px-2 py-1 bg-gray-100 rounded">السابق</button><button @click="pageSales++" :disabled="pageSales >= totalPages(stats.sales_history)" class="px-2 py-1 bg-gray-100 rounded">التالي</button></div>
+                    <button @click="exportToExcel(stats.sales_history, 'تقرير_المبيعات')" 
+                            class="bg-emerald-600 text-white px-3 py-1 rounded text-xs hover:bg-emerald-700">
+                        تصدير للـ Excel
+                    </button>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow border">
+                    <h3 class="font-bold mb-3 text-sm text-purple-600">آخر حركات المخزون</h3>
+                    <table class="w-full text-right text-xs">
+                        <tr class="bg-purple-50"><th>الدواء</th><th>النوع</th><th>الكمية</th></tr>
+                        <tr v-for="log in paginate(stats.inventory_logs, pageLogs)" :key="log.id" class="border-t">
+                            <td class="p-2">{{ log.medicine }}</td>
+                            <td class="p-2 font-bold" :class="log.type === 'sale' ? 'text-emerald-600' : 'text-red-600'">{{ log.type }}</td>
+                            <td class="p-2">{{ log.quantity }}</td>
+                        </tr>
+                    </table>
+                    <div class="mt-2 flex gap-1"><button @click="pageLogs--" :disabled="pageLogs===1" class="px-2 py-1 bg-gray-100 rounded">السابق</button><button @click="pageLogs++" :disabled="pageLogs >= totalPages(stats.inventory_logs)" class="px-2 py-1 bg-gray-100 rounded">التالي</button></div>
+                         <button @click="exportToExcel(stats.inventory_logs, 'سجل_حركات_المخزون')" 
+                                class="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700">
+                            تصدير للـ Excel
+                        </button>
+                    </div>
+
+                <div class="bg-white p-4 rounded shadow border col-span-1 lg:col-span-2">
+                    <h3 class="font-bold mb-3 text-sm text-red-600"> أدوية على وشك النفاذ  </h3>
+                    <table class="w-full text-right text-xs">
+                        <tr class="bg-red-50"><th>اسم الدواء</th><th>الكمية المتوفرة</th><th>تاريخ الانتهاء</th></tr>
+                        <tr v-for="b in paginate(stats.all_batches?.filter(x => x.quantity < 5), pageLowStock)" :key="b.id" class="border-t">
+                            <td class="p-2 font-bold">{{ b.medicine?.name }}</td>
+                            <td class="p-2 text-red-600 font-bold">{{ b.quantity }}</td>
+                            <td class="p-2">{{ b.expiry_date }}</td>
+                        </tr>
+                    </table>
+                    <div class="mt-2 flex gap-1"><button @click="pageLowStock--" :disabled="pageLowStock===1" class="px-2 py-1 bg-gray-100 rounded">السابق</button><button @click="pageLowStock++" :disabled="pageLowStock >= totalPages(stats.all_batches?.filter(x => x.quantity < 5))" class="px-2 py-1 bg-gray-100 rounded">التالي</button></div>
+                        <button @click="exportToExcel(stats.all_batches.filter(x => x.quantity < 5), 'الأدوية_الناقصة')" 
+                        class="bg-red-600 text-white px-3 py-1 rounded text-xs">تصدير</button>
+                    </div>
+                <div class="bg-white p-4 rounded shadow border col-span-1 lg:col-span-2">
+                    <h3 class="font-bold mb-3 text-sm text-blue-600">سجل دفعات الأدوية (All Batches)</h3>
+                    <table class="w-full text-right text-xs">
+                        <tr class="bg-blue-50">
+                            <th>اسم الدواء</th>
+                            <th>رقم التشغيلة (Batch)</th>
+                            <th>الكمية</th>
+                            <th>تاريخ الانتهاء</th>
+                        </tr>
+                        <tr v-for="b in paginate(stats.all_batches, pageAllBatches)" :key="b.id" class="border-t">
+                            <td class="p-2 font-bold">{{ b.medicine?.name }}</td>
+                            <td class="p-2">{{ b.batch_number }}</td>
+                            <td class="p-2 font-bold">{{ b.quantity }}</td>
+                            <td class="p-2" :class="isExpiring(b.expiry_date) ? 'text-red-600 font-bold' : ''">
+                                {{ b.expiry_date }}
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="mt-2 flex gap-1">
+                        <button @click="pageAllBatches--" :disabled="pageAllBatches===1" class="px-2 py-1 bg-gray-100 rounded">السابق</button>
+                        <button @click="pageAllBatches++" :disabled="pageAllBatches >= totalPages(stats.all_batches)" class="px-2 py-1 bg-gray-100 rounded">التالي</button>
+                        <button @click="exportToExcel(stats.all_batches, 'جميع_دفعات_الأدوية')" 
+                        class="bg-blue-600 text-white px-3 py-1 rounded text-xs">تصدير</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+    setup() {
+        const stats = ref({ sales_history: [], inventory_logs: [], all_batches: [] });
+        const branches = ref([]);
+        const selectedBranch = ref('all');
+        const pageSales = ref(1); const pageLogs = ref(1); const pageLowStock = ref(1);
+        const perPage = 10;
+        const pageAllBatches = ref(1);
+
+        const fetchOverview = async () => {
+            const res = await axios.get('api/admin/overview-stats', { params: { branch_id: selectedBranch.value } });
+            stats.value = res.data;
+        };
+
+        const totalPages = (arr) => Math.ceil((arr?.length || 0) / perPage);
+        const paginate = (arr, page) => {
+            const start = (page - 1) * perPage;
+            return arr?.slice(start, start + perPage) || [];
+        };
+
+        const isExpiring = (date) => {
+            const d = new Date(date);
+            const limit = new Date(); limit.setMonth(limit.getMonth() + 3);
+            return d < limit;
+        };
+
+        const exportToExcel = (data, fileName) => {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+            XLSX.writeFile(workbook, `${fileName}.xlsx`);
+        };
+        onMounted(() => {
+            axios.get('api/branches').then(res => branches.value = res.data);
+            fetchOverview();
+        });
+
+        return { stats, branches, selectedBranch, fetchOverview, pageSales, pageLogs, pageLowStock,pageAllBatches, paginate, totalPages, isExpiring,exportToExcel };
+    }
+};
+   //====== Start Branches ============/
+   const Branches = {
+        template: `
+            <div class="p-4">
+                <div class="mb-6 flex flex-col gap-2 bg-slate-50 p-4 rounded-lg">
+                    <div class="flex gap-4">
+                        <input v-model="form.name" placeholder="اسم الفرع" class="border p-2 rounded flex-1" :class="{'border-red-500': errors.name}">
+                        <input v-model="form.location" placeholder="الموقع" class="border p-2 rounded flex-1" :class="{'border-red-500': errors.location}">
+                        <button @click="saveBranch" class="bg-emerald-600 text-white px-6 py-2 rounded font-bold">
+                            {{ isEditing ? 'تحديث' : 'إضافة' }}
+                        </button>
+                        <button v-if="isEditing" @click="resetForm" class="bg-slate-400 text-white px-4 py-2 rounded">إلغاء</button>
+                    </div>
+                    <div v-for="(err, key) in errors" :key="key" class="text-red-500 text-xs">
+                        * {{ err[0] }}
+                    </div>
+                </div>
+
+                <table class="w-full text-right border">
+                    <tr class="bg-slate-100">
+                        <th class="p-3">الاسم</th>
+                        <th class="p-3">الموقع</th>
+                        <th class="p-3">إجراءات</th>
+                    </tr>
+                    <tr v-for="b in branches" :key="b.id" class="border-t hover:bg-slate-50">
+                        <td class="p-3">{{ b.name }}</td>
+                        <td class="p-3">{{ b.location }}</td>
+                        <td class="p-3 flex gap-2">
+                            <button @click="editBranch(b)" class="text-blue-600 hover:underline">تعديل</button>
+                            <button @click="deleteBranch(b.id)" class="text-red-600 hover:underline">حذف</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        setup() {
+            const { ref, onMounted } = Vue;
+            const branches = ref([]);
+            const errors = ref({}); // تعريف مصفوفة الأخطاء
+            const form = ref({ id: null, name: '', location: '' });
+            const isEditing = ref(false);
+
+            const fetchBranches = async () => {
+                const res = await axios.get('api/branches');
+                branches.value = res.data;
+            };
+
+            const saveBranch = async () => {
+                errors.value = {}; // مسح الأخطاء السابقة
+                try {
+                    if (isEditing.value) {
+                        await axios.put(`api/branches/${form.value.id}`, form.value);
+                    } else {
+                        await axios.post('api/branches', form.value);
+                    }
+                    resetForm();
+                    fetchBranches();
+                    alert('تم الحفظ بنجاح');
+                } catch (e) {
+                    if (e.response && e.response.status === 422) {
+                        errors.value = e.response.data.errors; // تعيين الأخطاء القادمة من Laravel
+                    } else {
+                        alert('حدث خطأ في النظام');
+                    }
+                }
+            };
+
+            const resetForm = () => {
+                form.value = { id: null, name: '', location: '' };
+                isEditing.value = false;
+                errors.value = {}; // مسح الأخطاء عند الإلغاء
+            };
+
+            const editBranch = (branch) => {
+                form.value = { ...branch };
+                isEditing.value = true;
+                errors.value = {}; // مسح الأخطاء عند التعديل
+            };
+
+            const deleteBranch = async (id) => {
+                if(confirm('هل أنت متأكد؟')) {
+                    await axios.delete(`api/branches/${id}`);
+                    fetchBranches();
+                }
+            };
+
+            onMounted(fetchBranches);
+            return { branches, form, isEditing, saveBranch, editBranch, deleteBranch, resetForm, errors };
+        }
+    };
+
+    //======= End Branches ==================//
+    //======= Start Categories ==============//
+    const Categories = {
+        template: `
+            <div class="p-4">
+                <div class="mb-6 flex flex-col gap-2 bg-slate-50 p-4 rounded-lg">
+                    <div class="flex gap-4">
+                        <input v-model="form.name" placeholder="اسم التصنيف" class="border p-2 rounded flex-1" :class="{'border-red-500': errors.name}">
+                        <button @click="saveCategory" class="bg-emerald-600 text-white px-6 py-2 rounded font-bold">
+                            {{ isEditing ? 'تحديث' : 'إضافة' }}
+                        </button>
+                        <button v-if="isEditing" @click="resetForm" class="bg-slate-400 text-white px-4 py-2 rounded">إلغاء</button>
+                    </div>
+                    <div v-for="(err, key) in errors" :key="key" class="text-red-500 text-xs">
+                        * {{ err[0] }}
+                    </div>
+                </div>
+
+                <table class="w-full text-right border">
+                    <tr class="bg-slate-100">
+                        <th class="p-3">اسم التصنيف</th>
+                        <th class="p-3">إجراءات</th>
+                    </tr>
+                    <tr v-for="cat in categories" :key="cat.id" class="border-t hover:bg-slate-50">
+                        <td class="p-3">{{ cat.name }}</td>
+                        <td class="p-3 flex gap-2">
+                            <button @click="editCategory(cat)" class="text-blue-600 hover:underline">تعديل</button>
+                            <button @click="deleteCategory(cat.id)" class="text-red-600 hover:underline">حذف</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        setup() {
+            const { ref, onMounted } = Vue;
+            const categories = ref([]);
+            const errors = ref({}); // تعريف مصفوفة الأخطاء
+            const form = ref({ id: null, name: '' });
+            const isEditing = ref(false);
+
+            const fetchCategories = async () => {
+                const res = await axios.get('api/categories');
+                categories.value = res.data;
+            };
+
+            const saveCategory = async () => {
+                errors.value = {}; // مسح الأخطاء السابقة
+                try {
+                    if (isEditing.value) {
+                        await axios.put('api/categories/' + form.value.id, form.value);
+                    } else {
+                        await axios.post('api/categories', form.value);
+                    }
+                    resetForm();
+                    fetchCategories();
+                    alert('تم الحفظ بنجاح');
+                } catch (e) {
+                    if (e.response && e.response.status === 422) {
+                        errors.value = e.response.data.errors; // تعيين الأخطاء القادمة من Laravel
+                    } else {
+                        alert('حدث خطأ في النظام');
+                    }
+                }
+            };
+
+            const editCategory = (cat) => { 
+                form.value = { ...cat }; 
+                isEditing.value = true; 
+                errors.value = {}; // مسح الأخطاء عند التعديل
+            };
+            
+            const resetForm = () => {
+                form.value = { id: null, name: '' };
+                isEditing.value = false;
+                errors.value = {};
+            };
+
+            const deleteCategory = async (id) => {
+                if (confirm('تنبيه: سيتم حذف هذا التصنيف. هل أنت متأكد؟')) {
+                    await axios.delete('api/categories/' + id);
+                    fetchCategories();
+                }
+            };
+
+            onMounted(fetchCategories);
+            return { categories, form, isEditing, saveCategory, editCategory, deleteCategory, resetForm, errors };
+        }
+    };
+    //======= End Categories ================//
+    //======= Start Suppliers ==============//
+    const Suppliers = {
+        template: `
+            <div class="p-4">
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg">
+                    <input v-model="form.name" placeholder="اسم المورد" class="border p-2 rounded" :class="{'border-red-500': errors.name}">
+                    <input v-model="form.phone" placeholder="رقم الهاتف" class="border p-2 rounded" :class="{'border-red-500': errors.phone}">
+                    <input v-model="form.email" placeholder="البريد الإلكتروني" class="border p-2 rounded" :class="{'border-red-500': errors.email}">
+                    
+                    <div v-for="(err, key) in errors" :key="key" class="text-red-500 text-xs col-span-3">
+                        * {{ err[0] }}
+                    </div>
+
+                    <button @click="saveSupplier" class="bg-emerald-600 text-white px-6 py-2 rounded font-bold col-span-1 md:col-span-3">
+                        {{ isEditing ? 'تحديث بيانات المورد' : 'إضافة مورد جديد' }}
+                    </button>
+                </div>
+
+                <table class="w-full text-right border">
+                    <tr class="bg-slate-100">
+                        <th class="p-3">اسم المورد</th>
+                        <th class="p-3">الهاتف</th>
+                        <th class="p-3">البريد</th>
+                        <th class="p-3">إجراءات</th>
+                    </tr>
+                    <tr v-for="s in suppliers" :key="s.id" class="border-t hover:bg-slate-50">
+                        <td class="p-3">{{ s.name }}</td>
+                        <td class="p-3">{{ s.phone }}</td>
+                        <td class="p-3">{{ s.email }}</td>
+                        <td class="p-3 flex gap-2">
+                            <button @click="editSupplier(s)" class="text-blue-600 hover:underline">تعديل</button>
+                            <button @click="deleteSupplier(s.id)" class="text-red-600 hover:underline">حذف</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        setup() {
+            const { ref, onMounted } = Vue;
+            const suppliers = ref([]);
+            const errors = ref({}); // تعريف مصفوفة الأخطاء
+            const form = ref({ id: null, name: '', phone: '', email: '' });
+            const isEditing = ref(false);
+
+            const fetchSuppliers = async () => {
+                const res = await axios.get('api/suppliers');
+                suppliers.value = res.data;
+            };
+
+            const saveSupplier = async () => {
+                errors.value = {}; // مسح الأخطاء السابقة
+                try {
+                    if (isEditing.value) {
+                        await axios.put('api/suppliers/' + form.value.id, form.value);
+                    } else {
+                        await axios.post('api/suppliers', form.value);
+                    }
+                    resetForm();
+                    fetchSuppliers();
+                    alert('تم الحفظ بنجاح');
+                } catch (e) {
+                    if (e.response && e.response.status === 422) {
+                        errors.value = e.response.data.errors; // تعيين الأخطاء من Laravel
+                    } else {
+                        alert('حدث خطأ في النظام');
+                    }
+                }
+            };
+
+            const editSupplier = (s) => { 
+                form.value = { ...s }; 
+                isEditing.value = true; 
+                errors.value = {}; // مسح الأخطاء عند التعديل
+            };
+            
+            const resetForm = () => {
+                form.value = { id: null, name: '', phone: '', email: '' };
+                isEditing.value = false;
+                errors.value = {};
+            };
+            
+            const deleteSupplier = async (id) => {
+                if(confirm('هل أنت متأكد؟')) {
+                    await axios.delete('api/suppliers/' + id);
+                    fetchSuppliers();
+                }
+            };
+
+            onMounted(fetchSuppliers);
+            return { suppliers, form, isEditing, saveSupplier, editSupplier, deleteSupplier, errors };
+        }
+    };
+    
+    //======= End Suppliers ===============//
+   //====== Start Medicine =============//
+   const Medicine = {
+        template: `
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-slate-50 p-4 rounded-lg">
+                    <input v-model="form.name" placeholder="اسم الدواء" class="border p-2 rounded" :class="{'border-red-500': errors.name}">
+                    <input v-model="form.barcode" placeholder="الباركود" class="border p-2 rounded" :class="{'border-red-500': errors.barcode}">
+                    <select v-model="form.category_id" class="border p-2 rounded" :class="{'border-red-500': errors.category_id}">
+                        <option value="" disabled selected>اختر التصنيف</option>
+                        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                    
+                    <div v-for="(err, key) in errors" :key="key" class="text-red-500 text-xs col-span-1 md:col-span-3">
+                        * {{ err[0] }}
+                    </div>
+
+                    <div class="col-span-1 md:col-span-3 flex gap-2">
+                        <button @click="saveMedicine" class="bg-emerald-600 text-white p-2 rounded font-bold flex-1 hover:bg-emerald-700">
+                            {{ isEditing ? 'تحديث الدواء' : 'حفظ الدواء' }}
+                        </button>
+                        <button v-if="isEditing" @click="resetForm" class="bg-slate-400 text-white p-2 rounded font-bold">إلغاء</button>
+                    </div>
+                </div>
+
+                <table class="w-full text-right border bg-white">
+                    <tr class="bg-slate-100">
+                        <th class="p-3">الاسم</th><th class="p-3">الباركود</th><th class="p-3">التصنيف</th><th class="p-3">إجراءات</th>
+                    </tr>
+                    <tr v-for="m in medicines" :key="m.id" class="border-t hover:bg-slate-50">
+                        <td class="p-3">{{ m.name }}</td>
+                        <td class="p-3">{{ m.barcode }}</td>
+                        <td class="p-3">{{ m.category?.name || 'بدون تصنيف' }}</td>
+                        <td class="p-3 flex gap-2">
+                            <button @click="editMedicine(m)" class="text-blue-600 hover:underline">تعديل</button>
+                            <button @click="deleteMedicine(m.id)" class="text-red-600 hover:underline">حذف</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        setup() {
+            const { ref, onMounted } = Vue;
+            const medicines = ref([]);
+            const categories = ref([]);
+            const errors = ref({});
+            const isEditing = ref(false);
+            const form = ref({ id: null, name: '', barcode: '', category_id: '' });
+
+            const fetchMedicines = async () => {
+                const res = await axios.get('api/admin/medicine-catalogue');
+                medicines.value = res.data;
+            };
+
+            const fetchCategories = async () => {
+                const res = await axios.get('api/categories');
+                categories.value = res.data;
+            };
+
+            const saveMedicine = async () => {
+                errors.value = {};
+                try {
+                    if (isEditing.value) {
+                        await axios.put(`api/medicines/${form.value.id}`, form.value);
+                    } else {
+                        await axios.post('api/medicines', form.value);
+                    }
+                    resetForm();
+                    fetchMedicines();
+                    alert('تمت العملية بنجاح');
+                } catch (e) {
+                    if (e.response?.status === 422) errors.value = e.response.data.errors;
+                    else alert('حدث خطأ في النظام');
+                }
+            };
+
+            const editMedicine = (m) => {
+                form.value = { ...m, category_id: m.category_id || '' };
+                isEditing.value = true;
+                errors.value = {};
+            };
+
+            const deleteMedicine = async (id) => {
+                if(confirm('هل أنت متأكد من حذف هذا الدواء؟')) {
+                    await axios.delete(`api/medicines/${id}`);
+                    fetchMedicines();
+                }
+            };
+
+            const resetForm = () => {
+                form.value = { id: null, name: '', barcode: '', category_id: '' };
+                isEditing.value = false;
+                errors.value = {};
+            };
+
+            onMounted(() => { fetchMedicines(); fetchCategories(); });
+
+            return { medicines, categories, form, saveMedicine, editMedicine, deleteMedicine, resetForm, isEditing, errors };
+        }
+    };
+    
+    //====== End Medicine ============//
+    //==== Start Purchase ================//
+    const Purchases = {
+        template: `
+            <div class="p-4">
+                <div v-if="loading" class="fixed inset-0 bg-white/50 flex items-center justify-center z-50">
+                    <i class="fas fa-spinner fa-spin text-4xl text-emerald-600"></i>
+                </div>
+
+                <button @click="showForm = !showForm" class="bg-emerald-600 text-white px-6 py-2 rounded mb-6 font-bold shadow-lg">
+                    {{ showForm ? 'إغلاق النموذج' : '+ تسجيل فاتورة شراء جديدة' }}
+                </button>
+
+                <div v-if="showForm" class="bg-white p-6 rounded-lg mb-6 border shadow-sm">
+                    <h3 class="font-bold mb-4 border-b pb-2">بيانات الفاتورة</h3>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <select v-model="form.supplier_id" class="border p-2 rounded">
+                            <option value="" disabled>اختر المورد</option>
+                            <option v-for="s in suppliers" :value="s.id">{{ s.name }}</option>
+                        </select>
+                        <select v-model="form.branch_id" class="border p-2 rounded">
+                            <option value="" disabled>اختر الفرع</option>
+                            <option v-for="b in branches" :value="b.id">{{ b.name }}</option>
+                        </select>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full mb-4">
+                            <tr class="text-sm text-slate-500">
+                                <th>الدواء</th><th>التشغيلة (Batch)</th><th>تاريخ الانتهاء</th><th>الكمية</th><th>شراء</th><th>بيع</th>
+                            </tr>
+                            <tr v-for="(item, index) in form.items" :key="index">
+                                <td class="p-1"><select v-model="item.medicine_id" class="border p-1 w-full rounded"><option v-for="m in medicines" :value="m.id">{{ m.name }}</option></select></td>
+                                <td class="p-1"><input v-model="item.batch_number" placeholder="رقم التشغيلة" class="border p-1 w-full rounded"></td>
+                                <td class="p-1"><input v-model="item.expiry_date" type="date" class="border p-1 w-full rounded"></td>
+                                <td class="p-1"><input v-model="item.quantity" type="number" class="border p-1 w-full rounded"></td>
+                                <td class="p-1"><input v-model="item.cost_price" type="number" class="border p-1 w-full rounded"></td>
+                                <td class="p-1"><input v-model="item.selling_price" type="number" class="border p-1 w-full rounded"></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <button @click="form.items.push({})" class="text-emerald-700 underline text-sm mb-4">+ إضافة صنف آخر</button>
+                    <button @click="savePurchase" class="bg-blue-600 text-white px-8 py-2 block w-full rounded font-bold hover:bg-blue-700">حفظ الفاتورة النهائية</button>
+                </div>
+
+                <table class="w-full text-right border rounded bg-white">
+                    <tr class="bg-slate-100">
+                        <th class="p-3">رقم الفاتورة</th><th class="p-3">المورد</th><th class="p-3">الفرع</th><th class="p-3">التاريخ</th><th class="p-3">الإجمالي</th>
+                    </tr>
+                    <tr v-for="p in purchases" :key="p.id" class="border-t hover:bg-slate-50">
+                        <td class="p-3">{{ p.id }}</td>
+                        <td class="p-3">{{ p.supplier?.name || '---' }}</td>
+                        <td class="p-3">{{ p.branch?.name || '---' }}</td>
+                        <td class="p-3">{{ p.created_at?.substring(0, 10) }}</td>
+                        <td class="p-3 font-bold text-emerald-700">{{ p.total_amount }} ج.س</td>
+                    </tr>
+                </table>
+            </div>
+        `,
+        setup() {
+            const { ref, onMounted } = Vue;
+            const purchases = ref([]);
+            const suppliers = ref([]);
+            const medicines = ref([]);
+            const branches = ref([]);
+            const showForm = ref(false);
+            const loading = ref(false);
+            const form = ref({ 
+                supplier_id: '', 
+                branch_id: '', 
+                items: [{ medicine_id: '', batch_number: '', expiry_date: '', quantity: 1, cost_price: 0, selling_price: 0 }] 
+            });
+
+            const loadData = async () => {
+                loading.value = true;
+                try {
+                    const [p, s, m, b] = await Promise.all([
+                        axios.get('api/admin/purchases'),
+                        axios.get('api/suppliers'),
+                        axios.get('api/admin/medicine-catalogue'),
+                        axios.get('api/branches')
+                    ]);
+                    purchases.value = p.data;
+                    suppliers.value = s.data;
+                    medicines.value = m.data;
+                    branches.value = b.data;
+                } catch (e) { console.error(e); } 
+                finally { loading.value = false; }
+            };
+
+            const savePurchase = async () => {
+                loading.value = true;
+                try {
+                    await axios.post('api/admin/purchases', form.value);
+                    alert('تمت عملية الشراء بنجاح');
+                    showForm.value = false;
+                    form.value = { supplier_id: '', branch_id: '', items: [{ medicine_id: '', batch_number: '', expiry_date: '', quantity: 1, cost_price: 0, selling_price: 0 }] };
+                    await loadData();
+                } catch (e) {
+                    alert('خطأ: تأكد من ملء جميع الحقول المطلوبة');
+                    console.error(e.response?.data);
+                } finally { loading.value = false; }
+            };
+
+            onMounted(loadData);
+            return { purchases, suppliers, medicines, branches, form, showForm, savePurchase, loading };
+        }
+    };
+    //==== End Purchase ===============//
+    //======= Updated Users Component =======//
+const Users = {
+    template: `
+        <div class="p-4">
+            <div class="bg-white p-6 rounded-xl shadow mb-8">
+                <h3 class="font-bold text-lg mb-4 text-emerald-800">إضافة مستخدم جديد</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="col-span-full">
+                         <div v-for="(error, key) in errors" :key="key" class="text-red-500 text-xs mb-1">
+                            * {{ error[0] }}
+                         </div>
+                    </div>
+
+                    <input v-model="userForm.name" placeholder="اسم الموظف" class="border p-2 rounded" :class="{'border-red-500': errors.name}">
+                    <input v-model="userForm.email" type="email" placeholder="البريد الإلكتروني" class="border p-2 rounded" :class="{'border-red-500': errors.email}">
+                    <input v-model="userForm.password" type="password" placeholder="كلمة المرور" class="border p-2 rounded" :class="{'border-red-500': errors.password}">
+                    <select v-model="userForm.role" class="border p-2 rounded">
+                        <option value="pharmacist">صيدلي</option>
+                        <option value="admin">مدير</option>
+                    </select>
+                    <select v-model="userForm.branch_id" class="border p-2 rounded">
+                        <option value="" disabled selected>اختر الفرع...</option>
+                        <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
+                    </select>
+                </div>
+                <button @click="saveUser" class="bg-emerald-600 text-white px-6 py-2 mt-4 rounded hover:bg-emerald-700">حفظ المستخدم</button>
+            </div>
+
+            <table class="w-full text-right border bg-white rounded-lg shadow-sm">
+                <tr class="bg-slate-100">
+                    <th class="p-3">الاسم</th><th class="p-3">البريد</th><th class="p-3">الدور</th><th class="p-3">الفرع</th><th class="p-3">العمليات</th>
+                </tr>
+                <tr v-for="u in users" :key="u.id" class="border-t">
+                    <td class="p-3">{{ u.name }}</td>
+                    <td class="p-3">{{ u.email }}</td>
+                    <td class="p-3">{{ u.role }}</td>
+                    <td class="p-3">{{ u.branch?.name || 'غير محدد' }}</td>
+                    <td class="p-3"><button @click="deleteUser(u.id)" class="text-red-600 font-bold hover:underline">حذف</button></td>
+                </tr>
+            </table>
+        </div>
+    `,
+    setup() {
+        const { ref, onMounted } = Vue;
+        const users = ref([]);
+        const branches = ref([]);
+        const errors = ref({});
+        
+        // Changed to userForm to match saveUser logic
+        const userForm = ref({ name: '', email: '', password: '', role: 'pharmacist', branch_id: '' });
+
+        const fetchUsers = async () => {
+            const res = await axios.get('api/users');
+            users.value = res.data;
+        };
+
+        const fetchBranches = async () => {
+            const res = await axios.get('api/branches');
+            branches.value = res.data;
+        };
+
+        const saveUser = async () => {
+            errors.value = {}; // Reset errors
+            try {
+                await axios.post('api/users', userForm.value);
+                // Reset form on success
+                userForm.value = { name: '', email: '', password: '', role: 'pharmacist', branch_id: '' };
+                fetchUsers();
+                alert('تم حفظ المستخدم بنجاح');
+            } catch (e) {
+                if (e.response && e.response.status === 422) {
+                    errors.value = e.response.data.errors;
+                } else {
+                    alert("حدث خطأ في النظام");
+                }
+            }
+        };
+
+        const deleteUser = async (id) => {
+            if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+                await axios.delete(`api/users/${id}`);
+                fetchUsers();
+            }
+        };
+
+        onMounted(() => {
+            fetchUsers();
+            fetchBranches();
+        });
+
+        return { users, branches, errors, userForm, saveUser, deleteUser };
+    }
+};
+    //========= Start Analytics ====//
+const Analytics = {
+    template: `
+        <div class="p-6 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="font-bold text-slate-700 mb-4">اتجاه المبيعات (آخر 7 أيام)</h3>
+                    <canvas id="salesChart"></canvas>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow border">
+                    <h3 class="font-bold text-slate-700 mb-4">الأدوية الأكثر ربحية</h3>
+                    <ul class="space-y-3">
+                        <li v-for="med in topProfitable" :key="med.id" class="flex justify-between p-2 border-b">
+                            <span>{{ med.name }}</span>
+                            <span class="font-bold text-emerald-600">{{ med.profit }} ج.س</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `,
+    setup() {
+        const topProfitable = ref([]);
+
+        const renderChart = async () => {
+            const res = await axios.get('api/admin/analytics-data');
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: res.data.dates,
+                    datasets: [{ label: 'المبيعات (ج.س)', data: res.data.totals, borderColor: '#10b981', fill: true }]
+                }
+            });
+            topProfitable.value = res.data.top_medicines;
+        };
+
+        onMounted(renderChart);
+        return { topProfitable };
+    }
+};
+    //==== End  Analytics ======//
+   //===== Start ==============//
+    const About = {
+        template: `
+            <div class="p-6 bg-white rounded-lg shadow border">
+                <h2 class="text-2xl font-bold text-emerald-700 mb-4">حول نظام PharmaFlow</h2>
+                <div class="prose max-w-none text-slate-600">
+                    <p class="mb-4">
+                        نظام <strong>PharmaFlow 1.0.0 Beta</strong> هو حل تقني متكامل صُمم خصيصاً لتحويل إدارة الصيدليات من الطرق التقليدية إلى الإدارة الرقمية الذكية.
+                    </p>
+                    <h3 class="font-bold text-lg mt-4 mb-2">مميزات النظام:</h3>
+                    <ul class="list-disc pr-5 space-y-2">
+                        <li>نقطة بيع (POS) فائقة السرعة مع اختصارات لوحة مفاتيح احترافية.</li>
+                        <li>إدارة ذكية للمخزون مع تنبيهات استباقية لنواقص الأدوية وتواريخ الصلاحية.</li>
+                        <li>تقارير وتحليلات مالية دقيقة لاتخاذ قرارات تجارية مبنية على بيانات حقيقية.</li>
+                        <li>نظام تصدير بيانات متطور للتقارير المحاسبية.</li>
+                    </ul>
+                    <div class="mt-6 pt-4 border-t text-xs text-slate-400">
+                        الإصدار: 1.0.0 Beta | تم التطوير لدعم كفاءة الصيدليات المتقدمة.
+                    </div>
+                </div>
+            </div>
+        `
+    };
+   //===== End About ==========//
+   const { onUnmounted } = Vue
+    createApp({
+        setup() {
+            const activeTab = ref('overview');
+            const tabs = [
+                { id: 'overview', name: 'نظرة عامة', icon: 'fas fa-home' },
+                { id: 'branches', name: 'إدارة الفروع', icon: 'fas fa-code-branch' },
+                { id: 'categories', name: 'التصنيفات', icon: 'fas fa-tags' },
+                { id: 'suppliers', name: 'الموردين', icon: 'fas fa-truck' },
+                { id: 'medicine', name: 'كتالوج الأدوية', icon: 'fas fa-pills' },
+                { id: 'purchases', name: 'إدارة المشتريات', icon: 'fas fa-shopping-cart' },
+                { id: 'users', name: 'المستخدمين', icon: 'fas fa-users' },
+                {
+                    id: 'analytics_link',
+                    name: 'التحليلات',
+                    icon: 'fas fa-chart-line'
+                },
+                { id: 'about', name: 'حول النظام', icon: 'fas fa-info-circle' }
+            ];
+            const adminUser = ref({ name: 'جاري التحميل...' });
+            const showOfflineOverlay = ref(
+                !navigator.onLine
+            );
+
+            const updateConnectionStatus = () => {
+
+                showOfflineOverlay.value =
+                    !navigator.onLine;
+
+            };
+            const logout = () => {
+
+                localStorage.removeItem(
+                    'token'
+                );
+
+                delete axios.defaults.headers.common[
+                    'Authorization'
+                ];
+
+                window.location.href =
+                    'login.html';
+
+                };
+            const navigate = (tab) => {
+
+            if (tab.id === 'analytics_link') {
+
+                window.location.href =
+                    'analytics.html';
+
+                return;
+
+            }
+
+            activeTab.value =
+                tab.id;
+
+            };
+            // 2. دالة التحقق من الصلاحية
+            const checkAuth = async () => {
+                try {
+                    const res = await axios.get('api/current-user');
+                    if (res.data.role !== 'admin') {
+                        window.location.href = '/pos.html'; 
+                    }
+                } catch (e) {
+                    // إذا فشل التوكن، نحذف التوكن وننتقل لصفحة الدخول
+                    localStorage.removeItem('token');
+                    window.location.href = '/login.html';
+                }
+            };
+            
+            onMounted(() => {
+                checkAuth();
+                // جلب بيانات المدير لعرض اسمه
+                axios.get('api/current-user')
+                    .then(res => adminUser.value = res.data)
+                    .catch(err => console.error("فشل جلب بيانات المدير"));
+                    updateConnectionStatus();
+
+                    window.addEventListener(
+
+                        'online',
+
+                        updateConnectionStatus
+
+                    );
+
+                    window.addEventListener(
+
+                        'offline',
+
+                        updateConnectionStatus
+
+                    );
+
+            });
+
+            onUnmounted(() => {
+
+                window.removeEventListener(
+                    'online',
+                    updateConnectionStatus
+                );
+
+                window.removeEventListener(
+                    'offline',
+                    updateConnectionStatus
+                );
+
+            });
+
+            
+            const currentTabName = computed(() => tabs.find(t => t.id === activeTab.value).name);
+            
+            const currentComponent = computed(() => {
+                const map = { overview: Overview, branches: Branches, categories: Categories, purchases: Purchases,about: About,
+                              suppliers: Suppliers, medicine: Medicine, users: Users, analytics: Analytics };
+                return map[activeTab.value];
+            });
+            
+
+            return { activeTab, tabs, currentTabName, currentComponent,logout,navigate,showOfflineOverlay };
+        }
+    }).mount('#app');
+</script>
+<link rel="manifest" href="/manifest.json">
+
+<meta
+    name="theme-color"
+    content="#2563eb">
+
+<script src="js/pwa.js"></script>
+</body>
+</html>
