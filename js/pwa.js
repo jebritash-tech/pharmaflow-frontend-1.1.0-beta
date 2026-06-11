@@ -1,84 +1,59 @@
 let deferredPrompt = null;
 
-// ============================
-// Service Worker
-// ============================
+window.addEventListener('beforeinstallprompt', (e) => {
 
-window.addEventListener(
+    e.preventDefault();
 
-    'load',
+    deferredPrompt = e;
 
-    async () => {
+    const installBtn =
+        document.getElementById('installBtn');
 
-        if (
-            !('serviceWorker' in navigator)
-        ) {
-            return;
-        }
+    if (installBtn) {
+        installBtn.style.display = 'block';
+    }
 
-        try {
+});
 
-            const registration =
+document.addEventListener('DOMContentLoaded', () => {
 
-                await navigator
-                    .serviceWorker
-                    .register(
-                        '/sw.js'
-                    );
+    const installBtn =
+        document.getElementById('installBtn');
+
+    if (!installBtn) return;
+
+    installBtn.addEventListener(
+        'click',
+        async () => {
+
+            if (!deferredPrompt) {
+
+                alert(
+                    'التثبيت غير متاح حالياً. افتح الموقع عدة مرات أو استخدم Chrome.'
+                );
+
+                return;
+
+            }
+
+            deferredPrompt.prompt();
+
+            const result =
+                await deferredPrompt.userChoice;
 
             console.log(
-                'PWA Ready',
-                registration
+                result.outcome
             );
 
-        }
-        catch(error){
+            deferredPrompt = null;
 
-            console.error(
-                error
-            );
+            installBtn.style.display =
+                'none';
 
         }
+    );
 
-    }
-
-);
-
-// ============================
-// Install Prompt
-// ============================
-
-window.addEventListener(
-    'beforeinstallprompt',
-    (event) => {
-
-        event.preventDefault();
-
-        deferredPrompt = event;
-
-    }
-);
-
-// ============================
-// Install Function
-// ============================
-
-async function installPWA() {
-
-    if (!deferredPrompt)
-        return;
-
-    deferredPrompt.prompt();
-
-    await deferredPrompt.userChoice;
-
-    deferredPrompt = null;
-
-}
-
-// ============================
-// Installed Event
-// ============================
+});
 
 window.addEventListener(
     'appinstalled',
@@ -88,5 +63,43 @@ window.addEventListener(
             'PWA Installed'
         );
 
+        const installBtn =
+            document.getElementById(
+                'installBtn'
+            );
+
+        if (installBtn) {
+            installBtn.style.display =
+                'none';
+        }
+
     }
 );
+
+if ('serviceWorker' in navigator) {
+
+    window.addEventListener(
+        'load',
+        () => {
+
+            navigator.serviceWorker
+                .register('./sw.js')
+                .then(() => {
+
+                    console.log(
+                        'Service Worker Registered'
+                    );
+
+                })
+                .catch(err => {
+
+                    console.error(
+                        err
+                    );
+
+                });
+
+        }
+    );
+
+}
