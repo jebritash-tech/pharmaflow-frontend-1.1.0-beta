@@ -52,7 +52,7 @@
             const login = async () => {
                 loading.value = true;
                 try {
-                    const res = await axios.post('api/login', form.value);
+                    const res = await axios.post('https://pharmaflow.free.nf/api/login', form.value);
                     localStorage.setItem('token', res.data.token);
                     window.location.href = res.data.user.role === 'admin' ? '/admin.html' : '/pos.html';
                 } catch (e) { alert(e.response?.data.message || "خطأ في بيانات الدخول"); } 
@@ -61,7 +61,7 @@
 
             const sendResetLink = async () => {
                 try {
-                    await axios.post('api/forgot-password', { email: resetEmail.value });
+                    await axios.post('https://pharmaflow.free.nf/api/forgot-password', { email: resetEmail.value });
                     alert('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني');
                     showReset.value = false;
                 } catch (e) { alert('تعذر إرسال الرابط، تأكد من البريد الإلكتروني'); }
