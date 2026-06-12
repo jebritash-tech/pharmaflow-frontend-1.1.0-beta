@@ -250,7 +250,7 @@ const Overview = {
         const pageAllBatches = ref(1);
 
         const fetchOverview = async () => {
-            const res = await axios.get('api/admin/overview-stats', { params: { branch_id: selectedBranch.value } });
+            const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/overview-stats', { params: { branch_id: selectedBranch.value } });
             stats.value = res.data;
         };
 
@@ -273,7 +273,7 @@ const Overview = {
             XLSX.writeFile(workbook, `${fileName}.xlsx`);
         };
         onMounted(() => {
-            axios.get('api/branches').then(res => branches.value = res.data);
+            axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches').then(res => branches.value = res.data);
             fetchOverview();
         });
 
@@ -323,7 +323,7 @@ const Overview = {
             const isEditing = ref(false);
 
             const fetchBranches = async () => {
-                const res = await axios.get('api/branches');
+                const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches');
                 branches.value = res.data;
             };
 
@@ -331,9 +331,9 @@ const Overview = {
                 errors.value = {}; // مسح الأخطاء السابقة
                 try {
                     if (isEditing.value) {
-                        await axios.put(`api/branches/${form.value.id}`, form.value);
+                        await axios.put(`https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches/${form.value.id}`, form.value);
                     } else {
-                        await axios.post('api/branches', form.value);
+                        await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches', form.value);
                     }
                     resetForm();
                     fetchBranches();
@@ -361,7 +361,7 @@ const Overview = {
 
             const deleteBranch = async (id) => {
                 if(confirm('هل أنت متأكد؟')) {
-                    await axios.delete(`api/branches/${id}`);
+                    await axios.delete(`https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches/${id}`);
                     fetchBranches();
                 }
             };
@@ -412,7 +412,7 @@ const Overview = {
             const isEditing = ref(false);
 
             const fetchCategories = async () => {
-                const res = await axios.get('api/categories');
+                const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/categories');
                 categories.value = res.data;
             };
 
@@ -420,9 +420,9 @@ const Overview = {
                 errors.value = {}; // مسح الأخطاء السابقة
                 try {
                     if (isEditing.value) {
-                        await axios.put('api/categories/' + form.value.id, form.value);
+                        await axios.put('https://pharmaflow-api-1-1-0-beta.onrender.com/api/categories/' + form.value.id, form.value);
                     } else {
-                        await axios.post('api/categories', form.value);
+                        await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/categories', form.value);
                     }
                     resetForm();
                     fetchCategories();
@@ -450,7 +450,7 @@ const Overview = {
 
             const deleteCategory = async (id) => {
                 if (confirm('تنبيه: سيتم حذف هذا التصنيف. هل أنت متأكد؟')) {
-                    await axios.delete('api/categories/' + id);
+                    await axios.delete('https://pharmaflow-api-1-1-0-beta.onrender.com/api/categories/' + id);
                     fetchCategories();
                 }
             };
@@ -505,7 +505,7 @@ const Overview = {
             const isEditing = ref(false);
 
             const fetchSuppliers = async () => {
-                const res = await axios.get('api/suppliers');
+                const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/suppliers');
                 suppliers.value = res.data;
             };
 
@@ -513,9 +513,9 @@ const Overview = {
                 errors.value = {}; // مسح الأخطاء السابقة
                 try {
                     if (isEditing.value) {
-                        await axios.put('api/suppliers/' + form.value.id, form.value);
+                        await axios.put('https://pharmaflow-api-1-1-0-beta.onrender.com/api/suppliers/' + form.value.id, form.value);
                     } else {
-                        await axios.post('api/suppliers', form.value);
+                        await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/suppliers', form.value);
                     }
                     resetForm();
                     fetchSuppliers();
@@ -543,7 +543,7 @@ const Overview = {
             
             const deleteSupplier = async (id) => {
                 if(confirm('هل أنت متأكد؟')) {
-                    await axios.delete('api/suppliers/' + id);
+                    await axios.delete('https://pharmaflow-api-1-1-0-beta.onrender.com/api/suppliers/' + id);
                     fetchSuppliers();
                 }
             };
@@ -603,12 +603,12 @@ const Overview = {
             const form = ref({ id: null, name: '', barcode: '', category_id: '' });
 
             const fetchMedicines = async () => {
-                const res = await axios.get('api/admin/medicine-catalogue');
+                const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/medicine-catalogue');
                 medicines.value = res.data;
             };
 
             const fetchCategories = async () => {
-                const res = await axios.get('api/categories');
+                const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/categories');
                 categories.value = res.data;
             };
 
@@ -616,9 +616,9 @@ const Overview = {
                 errors.value = {};
                 try {
                     if (isEditing.value) {
-                        await axios.put(`api/medicines/${form.value.id}`, form.value);
+                        await axios.put(`https://pharmaflow-api-1-1-0-beta.onrender.com/api/medicines/${form.value.id}`, form.value);
                     } else {
-                        await axios.post('api/medicines', form.value);
+                        await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/medicines', form.value);
                     }
                     resetForm();
                     fetchMedicines();
@@ -637,7 +637,7 @@ const Overview = {
 
             const deleteMedicine = async (id) => {
                 if(confirm('هل أنت متأكد من حذف هذا الدواء؟')) {
-                    await axios.delete(`api/medicines/${id}`);
+                    await axios.delete(`https://pharmaflow-api-1-1-0-beta.onrender.com/api/medicines/${id}`);
                     fetchMedicines();
                 }
             };
@@ -733,10 +733,10 @@ const Overview = {
                 loading.value = true;
                 try {
                     const [p, s, m, b] = await Promise.all([
-                        axios.get('api/admin/purchases'),
-                        axios.get('api/suppliers'),
-                        axios.get('api/admin/medicine-catalogue'),
-                        axios.get('api/branches')
+                        axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/purchases'),
+                        axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/suppliers'),
+                        axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/medicine-catalogue'),
+                        axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches')
                     ]);
                     purchases.value = p.data;
                     suppliers.value = s.data;
@@ -749,7 +749,7 @@ const Overview = {
             const savePurchase = async () => {
                 loading.value = true;
                 try {
-                    await axios.post('api/admin/purchases', form.value);
+                    await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/purchases', form.value);
                     alert('تمت عملية الشراء بنجاح');
                     showForm.value = false;
                     form.value = { supplier_id: '', branch_id: '', items: [{ medicine_id: '', batch_number: '', expiry_date: '', quantity: 1, cost_price: 0, selling_price: 0 }] };
@@ -817,19 +817,19 @@ const Users = {
         const userForm = ref({ name: '', email: '', password: '', role: 'pharmacist', branch_id: '' });
 
         const fetchUsers = async () => {
-            const res = await axios.get('api/users');
+            const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/users');
             users.value = res.data;
         };
 
         const fetchBranches = async () => {
-            const res = await axios.get('api/branches');
+            const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/branches');
             branches.value = res.data;
         };
 
         const saveUser = async () => {
             errors.value = {}; // Reset errors
             try {
-                await axios.post('api/users', userForm.value);
+                await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/users', userForm.value);
                 // Reset form on success
                 userForm.value = { name: '', email: '', password: '', role: 'pharmacist', branch_id: '' };
                 fetchUsers();
@@ -845,7 +845,7 @@ const Users = {
 
         const deleteUser = async (id) => {
             if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-                await axios.delete(`api/users/${id}`);
+                await axios.delete(`https://pharmaflow-api-1-1-0-beta.onrender.com/api/users/${id}`);
                 fetchUsers();
             }
         };
@@ -884,7 +884,7 @@ const Analytics = {
         const topProfitable = ref([]);
 
         const renderChart = async () => {
-            const res = await axios.get('api/admin/analytics-data');
+            const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/admin/analytics-data');
             const ctx = document.getElementById('salesChart').getContext('2d');
             new Chart(ctx, {
                 type: 'line',
@@ -987,21 +987,21 @@ const Analytics = {
             // 2. دالة التحقق من الصلاحية
             const checkAuth = async () => {
                 try {
-                    const res = await axios.get('api/current-user');
+                    const res = await axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/current-user');
                     if (res.data.role !== 'admin') {
                         window.location.href = '/pos.html'; 
                     }
                 } catch (e) {
                     // إذا فشل التوكن، نحذف التوكن وننتقل لصفحة الدخول
                     localStorage.removeItem('token');
-                    window.location.href = '/login.html';
+                    window.location.href = 'login.html';
                 }
             };
             
             onMounted(() => {
                 checkAuth();
                 // جلب بيانات المدير لعرض اسمه
-                axios.get('api/current-user')
+                axios.get('https://pharmaflow-api-1-1-0-beta.onrender.com/api/current-user')
                     .then(res => adminUser.value = res.data)
                     .catch(err => console.error("فشل جلب بيانات المدير"));
                     updateConnectionStatus();
