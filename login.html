@@ -54,7 +54,7 @@
                 try {
                     const res = await axios.post('https://pharmaflow-api-1-1-0-beta.onrender.com/api/login', form.value);
                     localStorage.setItem('token', res.data.token);
-                    window.location.href = res.data.user.role === 'admin' ? '/admin.html' : '/pos.html';
+                    window.location.href = res.data.user.role === 'admin' ? 'admin.html' : 'pos.html';
                 } catch (e) { alert(e.response?.data.message || "خطأ في بيانات الدخول"); } 
                 finally { loading.value = false; }
             };
