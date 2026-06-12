@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-	<link rel="icon" href="assets/icons/icon-192.png">
+
     <meta
         name="theme-color"
         content="#2563eb">
@@ -178,7 +178,7 @@
             const search = ref('');
             const cart = ref([]);
             const offlineSalesCount = ref(0);
-            const apiBase = 'api';
+            const apiBase = 'https://pharmaflow-api-1-1-0-beta.onrender.com/api';
 
             const cartTotal = computed(() => cart.value.reduce((s, i) => s + (i.selling_price * i.quantity), 0));
             const filteredMedicines = computed(() => search.value ? allMedicines.value.filter(m => m.name.toLowerCase().includes(search.value.toLowerCase())) : []);
